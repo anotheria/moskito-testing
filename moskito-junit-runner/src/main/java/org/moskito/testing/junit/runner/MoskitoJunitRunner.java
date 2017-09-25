@@ -11,6 +11,7 @@ import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
+import org.moskito.testing.rest.RESTConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -28,6 +29,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Moskito Junit Runner based on {@link BlockJUnit4ClassRunner}.
@@ -43,18 +45,13 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 	private Document doc;
 	private Element rootElement;
 	private Element currentElement;
+	private Document docExtended;
+	private Element rootElementExtended;
+	private Element currentElementExtended;
 
 	public MoskitoJunitRunner(Class<?> klass) throws InitializationError {
 		super(klass);
-		try {
-			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-			doc = docBuilder.newDocument();
-			rootElement = doc.createElement("result");
-			doc.appendChild(rootElement);
-		} catch (ParserConfigurationException e) {
-			logger.error("Failed to initialize MoskitoJunitRunner", e);
-		}
+		createXmlRootElements();
 	}
 
 
@@ -68,25 +65,65 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 
 	@Override
 	public void run(RunNotifier notifier) {
+		appendXmlTestMethodsElement(false);
+		appendXmlTestMethodsElement(true);
+		super.run(notifier);
+		writeXml();
+	}
+
+	private void appendXmlTestMethodsElement(boolean extended) {
+		Document doc = getDoc(extended);
+		Element rootElement = getRootElement(extended);
 		Element testElement = doc.createElement("test");
 		rootElement.appendChild(testElement);
 		Element name = doc.createElement("name");
 		testElement.appendChild(name);
 		name.appendChild(doc.createTextNode(getName()));
+		if (extended) {
+			currentElementExtended = doc.createElement("methods");
+			testElement.appendChild(currentElementExtended);
+			return;
+		}
 		currentElement = doc.createElement("methods");
 		testElement.appendChild(currentElement);
-		super.run(notifier);
+
+	}
+
+	private void writeXml() {
 		try {
 			// write the content into xml file
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File("testresult_" + getName().replace(".", "_") + ".xml"));
-			transformer.transform(source, result);
+			String name = getName().replace(".", "_");
+			transformXml(transformer, doc, "testresult_" + name);
+			transformXml(transformer, docExtended, "testresult_ext_" + name);
 		} catch (TransformerException e) {
 			logger.error("Failed to save data", e);
 		}
+	}
 
+	private void transformXml(Transformer transformer, Document doc, String fileNamePrefix) throws TransformerException {
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(new File(fileNamePrefix + ".xml"));
+			transformer.transform(source, result);
+	}
+
+	private void createXmlRootElements() {
+		try {
+			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+			doc = docBuilder.newDocument();
+			rootElement = doc.createElement("result");
+			doc.appendChild(rootElement);
+
+			docExtended = docBuilder.newDocument();
+			rootElementExtended = docExtended.createElement("result");
+			docExtended.appendChild(rootElementExtended);
+
+		} catch (ParserConfigurationException e) {
+			logger.error("Failed to initialize MoskitoJunitRunner", e);
+		}
 	}
 
 	private void resetInterval() {
@@ -105,11 +142,13 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 			serviceProducers.add(producer);
 
 		}
-		createXML(method, serviceProducers);
+		createXML(method, serviceProducers, false);
+		createXML(method, serviceProducers, true);
 	}
 
-	private void createXML(String method, List<IStatsProducer> producers) {
-
+	private void createXML(String method, List<IStatsProducer> producers, boolean extended) {
+		Document doc = getDoc(extended);
+		Element currentElement = getCurrentElement(extended);
 		Element methodElement = doc.createElement("method");
 		currentElement.appendChild(methodElement);
 		Element methodNameElement = doc.createElement("name");
@@ -147,8 +186,45 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 					statValueElement.appendChild(doc.createTextNode(statValue));
 					valueElement.appendChild(statValueElement);
 				}
+
+				if (extended && stat.getName() != "cumulated") {
+					Map<String, String> results = RESTConnector.getInstance().getJourneyCallsData(producer.getProducerId(), stat.getName());
+					for (Map.Entry<String, String> entry : results.entrySet()) {
+						if (entry.getKey().equals("producer") || entry.getKey().equals("method"))
+							continue;
+
+						Element valueElement = doc.createElement("value");
+						values.appendChild(valueElement);
+						String statValue = entry.getValue();
+						Element valueNameElement = doc.createElement("name");
+						valueNameElement.appendChild(doc.createTextNode(entry.getKey()));
+						valueElement.appendChild(valueNameElement);
+						Element statValueElement = doc.createElement("statValue");
+						statValueElement.appendChild(doc.createTextNode(statValue));
+						valueElement.appendChild(statValueElement);
+					}
+
+				}
 			}
 
 		}
+	}
+
+	public Document getDoc(boolean extended) {
+		if (extended)
+			return docExtended;
+		return doc;
+	}
+
+	public Element getRootElement(boolean extended) {
+		if (extended)
+			return rootElementExtended;
+		return rootElement;
+	}
+
+	public Element getCurrentElement(boolean extended) {
+		if (extended)
+			return currentElementExtended;
+		return currentElement;
 	}
 }
