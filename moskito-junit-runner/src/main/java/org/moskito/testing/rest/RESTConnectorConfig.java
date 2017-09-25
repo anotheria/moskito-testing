@@ -31,6 +31,11 @@ public class RESTConnectorConfig {
 	 */
 	private String snapshot;
 
+    /**
+     * Testing snapshot context path
+     */
+	private String testSnapshot;
+
 	/**
 	 * Snapshot context.
 	 */
@@ -186,4 +191,11 @@ public class RESTConnectorConfig {
                 '}';
     }
 
+    public String getTestSnapshot() {
+        return testSnapshot;
+    }
+
+    public void setTestSnapshot(String testSnapshot) {
+        this.testSnapshot = testSnapshot;
+    }
 }

@@ -16,7 +16,11 @@ public class TestUnit {
 	public void test(){
 		Monitored monitored = new Monitored();
 		monitored.method();
-
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Test
