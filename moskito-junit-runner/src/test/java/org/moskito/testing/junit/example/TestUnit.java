@@ -16,7 +16,6 @@ public class TestUnit {
 	public void test(){
 		Monitored monitored = new Monitored();
 		monitored.method();
-
 	}
 
 	@Test

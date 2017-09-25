@@ -84,6 +84,14 @@ public class RESTConnector {
 		return response.getResults().getStats();
 	}
 
+	public Response sendTestingSnapshot(TestingSnapshot snapshot){
+
+		WebResource resource = client.resource(getBaseURI(connectorConfig.getTestSnapshot()));
+		return resource.accept(MediaType.APPLICATION_JSON)
+				.type(MediaType.APPLICATION_JSON).post(Response.class, gson.toJson(snapshot));
+
+	}
+
 	private static Client getClient() {
 		Client client = Client.create(getClientConfig());
 		if (connectorConfig.isBasicAuthEnabled()) {
