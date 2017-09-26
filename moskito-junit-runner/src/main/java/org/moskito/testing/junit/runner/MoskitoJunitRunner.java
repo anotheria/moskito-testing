@@ -115,7 +115,7 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 			for(ServiceStats stat : ((List<ServiceStats>) producer.getStats())){
 
 				TestingStat statSnapshot = new TestingStat();
-				statSnapshot.setName(stat.getName());
+				statSnapshot.setStatName(stat.getName());
 				Map<String, String> statValues = new HashMap<>();
 
 				for(String statValueName : stat.getAvailableValueNames()){

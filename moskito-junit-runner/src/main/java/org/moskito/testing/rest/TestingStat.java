@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class TestingStat {
 
-    private String name;
+    private String statName;
 
     private Map<String, String> values;
 
@@ -21,12 +21,12 @@ public class TestingStat {
         this.values = values;
     }
 
-    public String getName() {
-        return name;
+    public String getStatName() {
+        return statName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setStatName(String statName) {
+        this.statName = statName;
     }
 
 }
