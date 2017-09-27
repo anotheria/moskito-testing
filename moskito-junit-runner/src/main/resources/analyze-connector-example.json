@@ -3,5 +3,6 @@
   "port": 8090,
   "resourcePath": "/moskito-analyze/api/",
   "snapshot": "snapshot/stats",
-  "journey" : "journey/stats"
+  "journey" : "journey/stats",
+  "testSnapshot": "tests/addSnapshot"
 }
