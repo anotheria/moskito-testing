@@ -1,6 +1,5 @@
 package org.moskito.testing.rest;
 
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
 import java.util.Map;
@@ -11,8 +10,7 @@ public class TestingStat {
 
     private Map<String, String> values;
 
-    @JacksonXmlElementWrapper(localName = "values")
-    @JacksonXmlProperty(localName = "value")
+    @JacksonXmlProperty(localName = "values")
     public Map<String, String> getValues() {
         return values;
     }

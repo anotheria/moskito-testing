@@ -1,5 +1,7 @@
 package org.moskito.testing.rest;
 
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
@@ -17,6 +19,8 @@ public class TestingProducerSnapshot {
     /**
      * List of producer stats
      */
+    @JacksonXmlElementWrapper(localName = "stats")
+    @JacksonXmlProperty(localName = "stat")
     private List<TestingStat> stats = new ArrayList<>();
 
     public String getProducerId() {
