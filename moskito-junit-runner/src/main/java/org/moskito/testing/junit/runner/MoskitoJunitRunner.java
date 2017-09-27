@@ -2,6 +2,8 @@ package org.moskito.testing.junit.runner;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
+import com.sun.jersey.api.client.ClientHandlerException;
+import com.sun.jersey.api.client.UniformInterfaceException;
 import net.anotheria.moskito.core.predefined.ServiceStats;
 import net.anotheria.moskito.core.producers.IStatsProducer;
 import net.anotheria.moskito.core.registry.ProducerRegistryFactory;
@@ -32,9 +34,25 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 
 	private Logger logger = LoggerFactory.getLogger(MoskitoJunitRunner.class);
 
+	/**
+	 * Current test snapshot object
+	 */
 	private TestingSnapshot testingSnapshot = new TestingSnapshot();
+
+	/**
+	 * Current test snapshot object with additional
+	 * statistic from journey
+	 */
 	private TestingSnapshot testingSnapshotExtended = new TestingSnapshot();
+
+	/**
+	 * Mapper for converting testing snapshots to xml documents
+	 */
 	private static final XmlMapper xmlMapper;
+
+	/**
+	 * Stores timestamp of test suite run start
+	 */
 	private static final long testRunStartTimestamp;
 
 	static {
@@ -49,11 +67,14 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 
 	@Override
 	protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+
 		resetInterval();
 		super.runChild(method, notifier);
 		resetInterval();
-		createChildResults(method.getName(), testingSnapshot, false);
-		createChildResults(method.getName(), testingSnapshotExtended, true);
+
+		makeTestMethodSnapshot(method.getName(), testingSnapshot, false);
+		makeTestMethodSnapshot(method.getName(), testingSnapshotExtended, true);
+
 	}
 
 	@Override
@@ -66,13 +87,26 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 
 		super.run(notifier);
 
-		writeXml(testingSnapshot, false);
-		writeXml(testingSnapshotExtended, true);
-		RESTConnector.getInstance().sendTestingSnapshot(testingSnapshot);
+		writeSnapshotToFileAsXml(testingSnapshot, false);
+		writeSnapshotToFileAsXml(testingSnapshotExtended, true);
+
+		try {
+			RESTConnector.getInstance().sendTestingSnapshot(testingSnapshot);
+		} catch (UniformInterfaceException | ClientHandlerException e){
+			logger.error("Failed to send test snapshot to moskito analyze.", e);
+		}
 
 	}
 
-	private void writeXml(TestingSnapshot snapshot, boolean extended) {
+	/**
+	 * Writes test run data to xml file.
+	 * File will be saved to module build sources directory.
+	 * Overwrites file with this test name if it exists.
+	 *
+	 * @param snapshot test snapshot object. Source of data for xml document
+	 * @param extended is current snapshot extended. Extended snapshot xml files has special prefix
+	 */
+	private void writeSnapshotToFileAsXml(TestingSnapshot snapshot, boolean extended) {
 
 		TestingResult result = new TestingResult();
 		result.setSnapshot(snapshot);
@@ -91,13 +125,24 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 
 	}
 
+	/**
+	 * Updates moskito metrics
+	 */
 	private void resetInterval() {
 		IntervalRegistry registry = IntervalRegistry.getInstance();
 		Interval interval = registry.getInterval("snapshot");
 		((IUpdateable) interval).update();
 	}
 
-	private void createChildResults(String methodName, TestingSnapshot snapshot, boolean extended) {
+	/**
+	 * Saves moskito statistics that been accumulated
+	 * due test method run to test snapshot
+	 *
+	 * @param methodName name of current test method
+	 * @param snapshot test snapshot object
+	 * @param extended is current snapshot is extended
+	 */
+	private void makeTestMethodSnapshot(String methodName, TestingSnapshot snapshot, boolean extended) {
 
 		Collection<IStatsProducer> producers = ProducerRegistryFactory.getProducerRegistryInstance().getProducers();
 		TestingMethodSnapshot methodSnapshot = new TestingMethodSnapshot();
@@ -125,11 +170,18 @@ public class MoskitoJunitRunner extends BlockJUnit4ClassRunner {
 				}
 
 				if(extended && !stat.getName().equals("cumulated")){
-					Map<String, String> results = RESTConnector.getInstance().getJourneyCallsData(producer.getProducerId(), stat.getName());
 
-					for(Map.Entry<String, String> entry : results.entrySet()){
-						if(!entry.getKey().equals("producer") && !entry.getKey().equals("method"))
-							statValues.put(entry.getKey(), entry.getValue());
+					try {
+
+						Map<String, String> results = RESTConnector.getInstance().getJourneyCallsData(producer.getProducerId(), stat.getName());
+
+						for (Map.Entry<String, String> entry : results.entrySet()) {
+							if (!entry.getKey().equals("producer") && !entry.getKey().equals("method"))
+								statValues.put(entry.getKey(), entry.getValue());
+						}
+
+					} catch (UniformInterfaceException | ClientHandlerException e){
+						logger.error("Failed to get journey calls data from moskito analyze.", e);
 					}
 
 				}
