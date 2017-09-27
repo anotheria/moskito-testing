@@ -10,10 +10,10 @@ import org.moskito.testing.junit.runner.MoskitoJunitRunner;
  * @author esmakula
  */
 //TODO uncomment annotations when analyze-connector.json configured
-@RunWith(MoskitoJunitRunner.class)
+//@RunWith(MoskitoJunitRunner.class)
 public class TestUnit {
 
-	@Test
+//	@Test
 	public void test(){
 		Monitored monitored = new Monitored();
 		monitored.method();
